@@ -1,6 +1,12 @@
 #!/usr/bin/env ruby
 
-require_relative './shared'
+require 'prawn'
+require 'prawn/measurement_extensions'
+require 'pry'
+require 'date'
+
+require_relative './config'
+
 FILE_NAME = "time_block_pages.pdf"
 
 # From https://stackoverflow.com/a/24753003/203673
@@ -65,27 +71,118 @@ def business_days_left_in_year(date)
   end
 end
 
-def business_days_left_in_sprint(date)
-  # Use this if you have sprints that start on the 1st and 15th.
-  #sprint_end = Date.new(date.year, date.month, date.mday <= 15 ? 15 : -1)
+def quarter(date)
+  QUARTERS_BY_MONTH[date.month]
+end
 
-  # Use this if you have two week sprints from a given day.
-  sprint_start = SPRINT_EPOCH.step(date, SPRINT_LENGTH).to_a.last
-  sprint_end = sprint_start.next_day(SPRINT_LENGTH - 1)
+def init_pdf
+  pdf = Prawn::Document.new(
+    print_scaling: :none,
+    skip_page_creation: true
+  )
+  begin_new_page pdf, "right"
+  pdf.font_families.update(FONTS)
+  pdf.font(FONTS.keys.first)
+  pdf.stroke_color MEDIUM_COLOR
+  pdf.line_width(0.5)
+  pdf
+end
 
-  days = business_days_between(date, sprint_end)
-  case days
-  when 0
-    "last work day of sprint"
-  when 1
-    "1 work day left in sprint"
+# Returns the date and an explanation of it
+def parse_start_of_week
+  unless ARGV.empty?
+    date = DateTime.parse(ARGV.first).to_date
+    return [date.prev_day(date.wday), "Parsed #{date} from arguments"]
+  end
+
+  date = DateTime.now.to_date
+  if date.wday > 2
+    [date.next_day(7-date.wday), "No date argument, using next week"]
   else
-    "#{days} work days left in sprint"
+    [date.prev_day(date.wday), "No date argument, using this week"]
   end
 end
 
-def quarter(date)
-  QUARTERS_BY_MONTH[date.month]
+def begin_new_page pdf, side
+  margin = side == :left ? LEFT_PAGE_MARGINS : RIGHT_PAGE_MARGINS
+  pdf.start_new_page size: PAGE_SIZE, layout: :portrait, margin: margin
+  if side == :right
+    hole_punches pdf
+  end
+end
+
+def hole_punches pdf
+  pdf.canvas do
+    x = 25
+    # Measuring it on the page it should be `[(1.25).in, (5.5).in, (9.75).in]`,
+    # but depending on the printer driver it might do some scaling. With one
+    # driver I printed a bunch of test pages and found that `[72, 392, 710]`
+    # put it in the right place so your milage may vary.
+    [(1.25).in, (5.5).in, (9.75).in].each do |y|
+      pdf.horizontal_line x - 5, x + 5, at: y
+      pdf.vertical_line y - 5, y + 5, at: x
+    end
+  end
+end
+
+def heading_format(overrides = {})
+  { size: 20, color: DARK_COLOR }.merge(overrides)
+end
+
+def subheading_format(overrides = {})
+  { size: 12, color: MEDIUM_COLOR }.merge(overrides)
+end
+
+# Caller needs to start the page, so this could be the first page.
+def notes_page pdf, heading_left, subheading_left = nil, heading_right = nil, subheading_right = nil
+  header_row_count = 2
+  body_row_count = HOUR_COUNT * 2
+  first_column = 0
+  last_column = COLUMN_COUNT - 1
+  first_row = header_row_count
+  last_row = header_row_count + body_row_count - 1
+
+  pdf.define_grid(columns: COLUMN_COUNT, rows: header_row_count + body_row_count, gutter: 0)
+  # grid.show_all
+
+  # Header Left
+  if heading_left
+    pdf.grid([0, first_column],[0, last_column]).bounding_box do
+      pdf.text heading_left, heading_format(align: :left)
+    end
+  end
+  if subheading_left
+    pdf.grid([1, first_column],[1, last_column]).bounding_box do
+      pdf.text subheading_left, subheading_format(align: :left)
+    end
+  end
+  # Header Right
+  if heading_right
+    pdf.grid([0, 3],[0, last_column]).bounding_box do
+      pdf.text heading_right, heading_format(align: :right)
+    end
+  end
+  if subheading_right
+    pdf.grid([1, 3],[1, last_column]).bounding_box do
+      pdf.text subheading_right, subheading_format(align: :right)
+    end
+  end
+
+  # Horizontal lines
+  (first_row..last_row).each do |row|
+    pdf.grid([row, first_column], [row, last_column]).bounding_box do
+      pdf.stroke_line pdf.bounds.bottom_left, pdf.bounds.bottom_right
+    end
+  end
+
+  # Checkboxes
+  checkbox_padding = 6
+  checkbox_size = pdf.grid.row_height - (2 * checkbox_padding)
+  ((first_row + 1)..last_row).each do |row|
+    pdf.grid(row, 0).bounding_box do
+      draw_checkbox pdf, checkbox_size, checkbox_padding
+    end
+  end
 end
 
 def draw_checkbox pdf, checkbox_size, checkbox_padding, label = nil
@@ -129,7 +226,6 @@ def week_ahead_page pdf, first_day, last_day
 
   # We don't start our own page since we don't know if this is the first week or one
   # of several weeks in a file.
-  hole_punches pdf
   notes_page pdf, heading_left, subheading_left, heading_right, subheading_right
 end
 
@@ -275,11 +371,10 @@ def daily_calendar_page pdf, date
 
   # Header
   left_header = date.strftime(DATE_LONG)
-  # right_header = date.strftime("Day %j")
+  #  right_header = date.strftime("Day %j")
   right_header = date.strftime("%A")
   left_subhed = date.strftime("Quarter #{quarter(date)} Week %W Day %j")
-  # right_subhed = business_days_left_in_year(date)
-  right_subhed = business_days_left_in_sprint(date)
+  right_subhed = business_days_left_in_year(date)
   pdf.grid([0, first_column],[1, 1]).bounding_box do
     pdf.text left_header, heading_format(align: :left)
   end
@@ -435,36 +530,41 @@ end
 sunday, explanation = parse_start_of_week
 puts explanation
 
-monday = sunday.next_day(1)
-friday = sunday.next_day(5)
-saturday = sunday.next_day(6)
-next_sunday = sunday.next_day(7)
-
 pdf = init_pdf
+end_date = Date.new(2023, 12, 30)  # set the end date as the end of 2023
 
-# Quarterly goals
-if sunday.month != next_sunday.month && (next_sunday.month % 3) == Q1_START_MONTH
-  first = Date.new(next_sunday.year, next_sunday.month, 1)
-  last = first.next_month(3).prev_day
-  puts "Q#{quarter(first)} quarterly goals page for: #{first.strftime(DATE_FULL_START)}#{last.strftime(DATE_FULL_END)}"
-  quarter_ahead(pdf, first, last)
+while sunday <= end_date
+
+  monday = sunday.next_day(1)
+  friday = sunday.next_day(5)
+  saturday = sunday.next_day(6)
+  next_sunday = sunday.next_day(7)
+
+  # Quarterly goals
+  if sunday.month != next_sunday.month && (next_sunday.month % 3) == Q1_START_MONTH
+    first = Date.new(next_sunday.year, next_sunday.month, 1)
+    last = first.next_month(3).prev_day
+    puts "Q#{quarter(first)} quarterly goals page for: #{first.strftime(DATE_FULL_START)}#{last.strftime(DATE_FULL_END)}"
+    quarter_ahead(pdf, first, last)
+  end
+
+  puts "Generating time block planner for #{monday.strftime(DATE_FULL_START)}#{next_sunday.strftime(DATE_FULL_END)} into #{FILE_NAME}"
+
+  # Weekly goals
+  week_ahead_page pdf, monday, next_sunday
+
+  # Daily pages
+  (1..5).each do |i|
+    day = sunday.next_day(i)
+    daily_tasks_page pdf, day
+    daily_calendar_page pdf, day
+  end
+
+  # Weekend page
+  weekend_page pdf, saturday, next_sunday
+
+  sunday = next_sunday
+  begin_new_page pdf, :right
 end
-
-puts "Generating time block planner for #{monday.strftime(DATE_FULL_START)}#{next_sunday.strftime(DATE_FULL_END)} into #{FILE_NAME}"
-
-# Weekly goals
-week_ahead_page pdf, monday, next_sunday
-
-# Daily pages
-(1..5).each do |i|
-  day = sunday.next_day(i)
-  daily_tasks_page pdf, day
-  daily_calendar_page pdf, day
-end
-
-# Weekend page
-weekend_page pdf, saturday, next_sunday
 
 pdf.render_file FILE_NAME
-
-

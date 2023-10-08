@@ -1,4 +1,4 @@
-HOUR_LABELS = [nil, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, nil, nil]
+HOUR_LABELS = [nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil]
 HOUR_COUNT = HOUR_LABELS.length
 COLUMN_COUNT = 4
 LIGHT_COLOR = 'AAAAAA'
@@ -18,7 +18,7 @@ FONTS = {
     condensed: { file: OSX_FONT_PATH, font: 'Futura Condensed Medium' },
   }
 }
-PAGE_SIZE = 'LETTER' # Could also do 'A4'
+PAGE_SIZE = 'A4' # Could also do 'A4'
 # Order is top, right, bottom, left
 LEFT_PAGE_MARGINS = [36, 72, 36, 36]
 RIGHT_PAGE_MARGINS = [36, 36, 36, 72]
@@ -27,20 +27,13 @@ RIGHT_PAGE_MARGINS = [36, 36, 36, 72]
 Q1_START_MONTH = 2
 QUARTERS_BY_MONTH = (1..12).map { |month| (month / 3.0).ceil }.rotate(1 - Q1_START_MONTH).unshift(nil)
 
-# Use these if you have sprints of a weekly interval
-SPRINT_EPOCH = Date.parse('2023-01-04')
-SPRINT_LENGTH = 14
-
-# Names by day of week, 0 is Sunday.
-OOOS_BY_WDAY = [nil, nil, ['Juan'], ['Kelly'], nil, ['Alex', 'Edna'], nil]
-
 # Repeating tasks by day of week, 0 is Sunday. Nested index is the row.
 TASKS_BY_WDAY = [
-  { 0 => 'Plan meals' },
-  { 0 => 'Update standup notes', 12 => 'Italian', 13 => 'Walk dog' },
-  { 0 => 'Update standup notes', 12 => 'Italian', 13 => 'Walk dog' },
-  { 0 => 'Update standup notes', 12 => 'Italian', 13 => 'Walk dog' },
-  { 0 => 'Update standup notes', 12 => 'Italian', 13 => 'Walk dog' },
-  { 0 => 'Update standup notes', 12 => 'Italian', 13 => 'Walk dog' },
+  {},
+  {},
+  {},
+  {},
+  {},
+  {},
   { 0 => 'Plan next week' },
 ]
