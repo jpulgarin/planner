@@ -106,9 +106,6 @@ end
 def begin_new_page pdf, side
   margin = side == :left ? LEFT_PAGE_MARGINS : RIGHT_PAGE_MARGINS
   pdf.start_new_page size: PAGE_SIZE, layout: :portrait, margin: margin
-  if side == :right
-    hole_punches pdf
-  end
 end
 
 def hole_punches pdf
@@ -211,7 +208,6 @@ def quarter_ahead pdf, first_day, last_day
   subheading_right = last_day.strftime('%Y')
 
   # We let the caller start our page for us but we'll do both sides
-  hole_punches pdf
   notes_page pdf, heading_left, subheading_left, heading_right, subheading_right
   begin_new_page pdf, :left
   notes_page pdf, heading_left, subheading_left, heading_right, subheading_right
@@ -531,7 +527,7 @@ sunday, explanation = parse_start_of_week
 puts explanation
 
 pdf = init_pdf
-end_date = Date.new(2023, 12, 30)  # set the end date as the end of 2023
+end_date = Date.new(2024, 3, 31)  # set the end date as the end of 2023
 
 while sunday <= end_date
 

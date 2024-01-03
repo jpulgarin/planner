@@ -30,10 +30,10 @@ QUARTERS_BY_MONTH = (1..12).map { |month| (month / 3.0).ceil }.rotate(1 - Q1_STA
 # Repeating tasks by day of week, 0 is Sunday. Nested index is the row.
 TASKS_BY_WDAY = [
   {},
+  { 0 => 'Weekly review' },
   {},
   {},
   {},
   {},
   {},
-  { 0 => 'Plan next week' },
 ]
