@@ -24,7 +24,7 @@ LEFT_PAGE_MARGINS = [36, 72, 36, 36]
 RIGHT_PAGE_MARGINS = [36, 36, 36, 72]
 
 # Adjust the quarters to a fiscal year, 1 for Jan, 2 for Feb, etc.
-Q1_START_MONTH = 2
+Q1_START_MONTH = 1
 QUARTERS_BY_MONTH = (1..12).map { |month| (month / 3.0).ceil }.rotate(1 - Q1_START_MONTH).unshift(nil)
 
 # Repeating tasks by day of week, 0 is Sunday. Nested index is the row.
@@ -34,6 +34,6 @@ TASKS_BY_WDAY = [
   {},
   {},
   {},
-  {},
+  { 0 => 'Plan next week\'s social events' },
   {},
 ]
